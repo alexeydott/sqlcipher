@@ -93,19 +93,37 @@ typedef PVOID BCRYPT_KEY_HANDLE;
 typedef PVOID BCRYPT_HANDLE;
 
 /* Algorithm identifiers */
+#ifndef BCRYPT_SHA1_ALGORITHM
 #define BCRYPT_SHA1_ALGORITHM    L"SHA1"
+#endif
+#ifndef BCRYPT_SHA256_ALGORITHM
 #define BCRYPT_SHA256_ALGORITHM  L"SHA256"
+#endif
+#ifndef BCRYPT_SHA512_ALGORITHM
 #define BCRYPT_SHA512_ALGORITHM  L"SHA512"
+#endif
+#ifndef BCRYPT_AES_ALGORITHM
 #define BCRYPT_AES_ALGORITHM     L"AES"
+#endif
 
 /* Property names */
+#ifndef BCRYPT_CHAINING_MODE
 #define BCRYPT_CHAINING_MODE     L"ChainingMode"
+#endif
+#ifndef BCRYPT_CHAIN_MODE_CBC
 #define BCRYPT_CHAIN_MODE_CBC    L"ChainingModeCBC"
+#endif
+#ifndef BCRYPT_OBJECT_LENGTH
 #define BCRYPT_OBJECT_LENGTH     L"ObjectLength"
+#endif
 
 /* Flag constants */
+#ifndef BCRYPT_USE_SYSTEM_PREFERRED_RNG
 #define BCRYPT_USE_SYSTEM_PREFERRED_RNG  0x00000002UL
+#endif
+#ifndef BCRYPT_ALG_HANDLE_HMAC_FLAG
 #define BCRYPT_ALG_HANDLE_HMAC_FLAG      0x00000008UL
+#endif
 
 /* Function pointer typedefs */
 typedef NTSTATUS (WINAPI *pfnBCryptOpenAlgorithmProvider_t)(BCRYPT_ALG_HANDLE *, LPCWSTR, LPCWSTR, ULONG);
