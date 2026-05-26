@@ -1331,11 +1331,27 @@ LIBRESOBJS =
 !ENDIF
 
 # <<mark>>
+# SQLCipher crypto provider selection
+# =====================================
+# Pass the desired provider via CFLAGS when invoking nmake.
+# Only one provider should be defined at a time.
+#
+# OpenSSL (default when none is specified):
+#   CFLAGS=-DSQLITE_HAS_CODEC -DSQLCIPHER_CRYPTO_OPENSSL
+#
+# Windows CNG — static link (requires Windows 8 / Server 2012+):
+#   CFLAGS=-DSQLITE_HAS_CODEC -DSQLCIPHER_CRYPTO_CNG
+#   Bcrypt.lib is added automatically via #pragma comment(lib) on MSVC.
+#
+# Windows CNG — dynamic load (no import library needed at link time):
+#   CFLAGS=-DSQLITE_HAS_CODEC -DSQLCIPHER_CRYPTO_CNG -DSQLCIPHER_CRYPTO_CNG_DYNAMIC
+#
 # Core source code files, part 1.
 #
 SRC00 = \
 	$(TOP)\src\sqlcipher.c \
 	$(TOP)\src\crypto_cc.c \
+	$(TOP)\src\crypto_cng.c \
 	$(TOP)\src\crypto_libtomcrypt.c \
 	$(TOP)\src\crypto_openssl.c \
 	$(TOP)\src\sqlcipher.h \
