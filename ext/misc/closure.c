@@ -956,6 +956,17 @@ static sqlite3_module closureModule = {
 #ifdef _WIN32
 __declspec(dllexport)
 #endif
+#if defined(SQLITE_CLOSURE_STATIC)
+int sqlite3_closure_register(
+  sqlite3 *db
+ ){
+  int rc = SQLITE_OK;
+#ifndef SQLITE_OMIT_VIRTUALTABLE
+  rc = sqlite3_create_module(db, "transitive_closure", &closureModule, 0);
+#endif /* SQLITE_OMIT_VIRTUALTABLE */
+  return rc;
+}
+#else /* SQLITE_CLOSURE_STATIC */
 int sqlite3_closure_init(
   sqlite3 *db, 
   char **pzErrMsg, 
@@ -969,3 +980,4 @@ int sqlite3_closure_init(
 #endif /* SQLITE_OMIT_VIRTUALTABLE */
   return rc;
 }
+#endif /* SQLITE_CLOSURE_STATIC */

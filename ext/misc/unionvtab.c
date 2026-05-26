@@ -1368,6 +1368,17 @@ static int createUnionVtab(sqlite3 *db){
 #ifdef _WIN32
 __declspec(dllexport)
 #endif
+#if defined(SQLITE_UNIONVTAB_STATIC)
+int sqlite3_unionvtab_register(
+  sqlite3 *db 
+){
+  int rc = SQLITE_OK;
+#ifndef SQLITE_OMIT_VIRTUALTABLE  
+  rc = createUnionVtab(db);
+#endif
+  return rc; 
+}
+#else
 int sqlite3_unionvtab_init(
   sqlite3 *db, 
   char **pzErrMsg, 
@@ -1381,3 +1392,4 @@ int sqlite3_unionvtab_init(
 #endif
   return rc;
 }
+#endif /* SQLITE_UNIONVTAB_STATIC */
