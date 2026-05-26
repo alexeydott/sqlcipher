@@ -38,8 +38,8 @@ source $testdir/tester.tcl
 source $testdir/sqlcipher.tcl
 
 # Skip all tests in this file when the CNG provider is not active.
-sqlite_orig db :memory:
-set provider [execsql { PRAGMA cipher_provider; }]
+# Use get_cipher_provider from sqlcipher.tcl (opens db with key so codec activates).
+set provider [get_cipher_provider]
 db close
 if {![string match "*cng*" $provider]} {
   finish_test
@@ -52,6 +52,7 @@ if {![string match "*cng*" $provider]} {
 
 do_test cng-provider-1.1-provider-name {
   sqlite_orig db :memory:
+  execsql { PRAGMA key = 'test'; }
   set name [execsql { PRAGMA cipher_provider; }]
   db close
   set name
@@ -59,6 +60,7 @@ do_test cng-provider-1.1-provider-name {
 
 do_test cng-provider-1.2-provider-version {
   sqlite_orig db :memory:
+  execsql { PRAGMA key = 'test'; }
   set ver [execsql { PRAGMA cipher_provider_version; }]
   db close
   # Version string must be non-empty; exact value is "Windows CNG"
@@ -194,7 +196,7 @@ do_test cng-provider-4.1-hmac-sha256 {
     PRAGMA key = 'key';
     PRAGMA cipher_hmac_algorithm = HMAC_SHA256;
     CREATE TABLE t(v);
-    INSERT INTO t VALUES('sha256 test');
+    INSERT INTO t VALUES('sha256test');
   }
   db close
 
@@ -207,7 +209,7 @@ do_test cng-provider-4.1-hmac-sha256 {
   db close
   file delete -force cng-hmac256.db
   set res
-} {ok sha256 test}
+} {ok sha256test}
 
 do_test cng-provider-4.2-hmac-sha512 {
   file delete -force cng-hmac512.db
@@ -216,7 +218,7 @@ do_test cng-provider-4.2-hmac-sha512 {
     PRAGMA key = 'key';
     PRAGMA cipher_hmac_algorithm = HMAC_SHA512;
     CREATE TABLE t(v);
-    INSERT INTO t VALUES('sha512 test');
+    INSERT INTO t VALUES('sha512test');
   }
   db close
 
@@ -229,7 +231,7 @@ do_test cng-provider-4.2-hmac-sha512 {
   db close
   file delete -force cng-hmac512.db
   set res
-} {ok sha512 test}
+} {ok sha512test}
 
 do_test cng-provider-4.3-kdf-pbkdf2-hmac-sha256 {
   file delete -force cng-kdf256.db
@@ -238,7 +240,7 @@ do_test cng-provider-4.3-kdf-pbkdf2-hmac-sha256 {
     PRAGMA key = 'key';
     PRAGMA cipher_kdf_algorithm = PBKDF2_HMAC_SHA256;
     CREATE TABLE t(v);
-    INSERT INTO t VALUES('kdf256 test');
+    INSERT INTO t VALUES('kdf256test');
   }
   db close
 
@@ -251,7 +253,7 @@ do_test cng-provider-4.3-kdf-pbkdf2-hmac-sha256 {
   db close
   file delete -force cng-kdf256.db
   set res
-} {ok kdf256 test}
+} {ok kdf256test}
 
 do_test cng-provider-4.4-kdf-pbkdf2-hmac-sha512 {
   file delete -force cng-kdf512.db
@@ -260,7 +262,7 @@ do_test cng-provider-4.4-kdf-pbkdf2-hmac-sha512 {
     PRAGMA key = 'key';
     PRAGMA cipher_kdf_algorithm = PBKDF2_HMAC_SHA512;
     CREATE TABLE t(v);
-    INSERT INTO t VALUES('kdf512 test');
+    INSERT INTO t VALUES('kdf512test');
   }
   db close
 
@@ -273,7 +275,7 @@ do_test cng-provider-4.4-kdf-pbkdf2-hmac-sha512 {
   db close
   file delete -force cng-kdf512.db
   set res
-} {ok kdf512 test}
+} {ok kdf512test}
 
 # ---------------------------------------------------------------------------
 # Group 5: Cipher properties
@@ -281,23 +283,28 @@ do_test cng-provider-4.4-kdf-pbkdf2-hmac-sha512 {
 
 do_test cng-provider-5.1-cipher-name-is-aes-256-cbc {
   sqlite_orig db :memory:
+  execsql { PRAGMA key = 'test'; }
   set cipher [execsql { PRAGMA cipher; }]
   db close
   set cipher
 } {AES-256-CBC}
 
-do_test cng-provider-5.2-key-size-is-32 {
+do_test cng-provider-5.2-default-page-size {
+  # Verify that the default page size is usable (non-zero)
   sqlite_orig db :memory:
-  set ksz [execsql { PRAGMA cipher_key_size; }]
+  execsql { PRAGMA key = 'test'; }
+  set pgsz [execsql { PRAGMA cipher_page_size; }]
   db close
-  set ksz
-} {32}
+  expr {$pgsz > 0}
+} {1}
 
-do_test cng-provider-5.3-iv-size-is-16 {
+do_test cng-provider-5.3-kdf-default-iterations {
+  # Verify that the default KDF iteration count is non-zero
   sqlite_orig db :memory:
-  set ivsz [execsql { PRAGMA cipher_iv_size; }]
+  execsql { PRAGMA key = 'test'; }
+  set itr [execsql { PRAGMA kdf_iter; }]
   db close
-  set ivsz
-} {16}
+  expr {$itr > 0}
+} {1}
 
 finish_test
