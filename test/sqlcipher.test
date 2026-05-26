@@ -59,7 +59,8 @@ test_suite "sqlcipher" -prefix "" -description {
            sqlcipher-integrity.test \
            sqlcipher-codecerror.test \
            sqlcipher-backup.test \
-           sqlcipher-zmemory.test
+           sqlcipher-zmemory.test \
+           sqlcipher-cng-provider.test
 ]
 run_test_suite sqlcipher
 finish_test

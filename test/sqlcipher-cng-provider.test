@@ -1,0 +1,303 @@
+# SQLCipher
+# sqlcipher-cng-provider.test — tests for the Windows CNG crypto provider
+#
+# Copyright (c) 2024, ZETETIC LLC
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of the ZETETIC LLC nor the
+#       names of its contributors may be used to endorse or promote products
+#       derived from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY ZETETIC LLC ''AS IS'' AND ANY
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL ZETETIC LLC BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+# This file implements regression tests for the Windows CNG (bcrypt.dll)
+# SQLCipher crypto provider.
+#
+# Tests are skipped automatically when the active provider is not "cng" so
+# the suite can run safely on non-Windows builds or builds that use a
+# different provider.
+
+set testdir [file dirname $argv0]
+source $testdir/tester.tcl
+source $testdir/sqlcipher.tcl
+
+# Skip all tests in this file when the CNG provider is not active.
+sqlite_orig db :memory:
+set provider [execsql { PRAGMA cipher_provider; }]
+db close
+if {![string match "*cng*" $provider]} {
+  finish_test
+  return
+}
+
+# ---------------------------------------------------------------------------
+# Group 1: Provider identification
+# ---------------------------------------------------------------------------
+
+do_test cng-provider-1.1-provider-name {
+  sqlite_orig db :memory:
+  set name [execsql { PRAGMA cipher_provider; }]
+  db close
+  set name
+} {cng}
+
+do_test cng-provider-1.2-provider-version {
+  sqlite_orig db :memory:
+  set ver [execsql { PRAGMA cipher_provider_version; }]
+  db close
+  # Version string must be non-empty; exact value is "Windows CNG"
+  expr {[string length $ver] > 0}
+} {1}
+
+# ---------------------------------------------------------------------------
+# Group 2: Basic encrypt / decrypt round-trip
+# ---------------------------------------------------------------------------
+
+do_test cng-provider-2.1-create-and-read-with-passphrase {
+  file delete -force cng-test.db
+  sqlite_orig db cng-test.db
+  execsql {
+    PRAGMA key = 'test passphrase';
+    CREATE TABLE t1(a, b);
+    INSERT INTO t1 VALUES('hello', 'world');
+  }
+  db close
+
+  sqlite_orig db cng-test.db
+  set res [execsql {
+    PRAGMA key = 'test passphrase';
+    SELECT * FROM t1;
+  }]
+  db close
+  file delete -force cng-test.db
+  set res
+} {ok hello world}
+
+do_test cng-provider-2.2-wrong-key-returns-empty {
+  file delete -force cng-test2.db
+  sqlite_orig db cng-test2.db
+  execsql {
+    PRAGMA key = 'correct key';
+    CREATE TABLE t1(x);
+    INSERT INTO t1 VALUES(42);
+  }
+  db close
+
+  sqlite_orig db cng-test2.db
+  catch {
+    execsql {
+      PRAGMA key = 'wrong key';
+      SELECT * FROM t1;
+    }
+  } res
+  db close
+  file delete -force cng-test2.db
+  # Opening with wrong key should fail (error or empty result)
+  expr {$res ne "ok 42"}
+} {1}
+
+do_test cng-provider-2.3-create-and-read-with-raw-hex-key {
+  file delete -force cng-hex.db
+  setup cng-hex.db "\"x'98483C6EB40B6C31A448C22A66DED3B5E5E8D5119CAC8327B655C8B5C4836481'\""
+  sqlite_orig db cng-hex.db
+  set res [execsql {
+    PRAGMA key = "x'98483C6EB40B6C31A448C22A66DED3B5E5E8D5119CAC8327B655C8B5C4836481'";
+    SELECT name FROM sqlite_schema WHERE type='table';
+    SELECT * FROM t1;
+  }]
+  db close
+  file delete -force cng-hex.db
+  set res
+} {ok t1 test1 test2}
+
+# ---------------------------------------------------------------------------
+# Group 3: Rekey
+# ---------------------------------------------------------------------------
+
+do_test cng-provider-3.1-rekey-changes-encryption {
+  file delete -force cng-rekey.db
+  sqlite_orig db cng-rekey.db
+  execsql {
+    PRAGMA key = 'original key';
+    CREATE TABLE data(val TEXT);
+    INSERT INTO data VALUES('sensitive');
+  }
+  db close
+
+  # Re-open and rekey
+  sqlite_orig db cng-rekey.db
+  execsql {
+    PRAGMA key = 'original key';
+    PRAGMA rekey = 'new key';
+  }
+  db close
+
+  # Must open with new key
+  sqlite_orig db cng-rekey.db
+  set res [execsql {
+    PRAGMA key = 'new key';
+    SELECT val FROM data;
+  }]
+  db close
+  file delete -force cng-rekey.db
+  set res
+} {ok sensitive}
+
+do_test cng-provider-3.2-old-key-rejected-after-rekey {
+  file delete -force cng-rekey2.db
+  sqlite_orig db cng-rekey2.db
+  execsql {
+    PRAGMA key = 'old';
+    CREATE TABLE t(x);
+    INSERT INTO t VALUES(1);
+  }
+  db close
+
+  sqlite_orig db cng-rekey2.db
+  execsql { PRAGMA key = 'old'; PRAGMA rekey = 'new'; }
+  db close
+
+  # Old key should fail
+  sqlite_orig db cng-rekey2.db
+  catch {
+    execsql { PRAGMA key = 'old'; SELECT * FROM t; }
+  } res
+  db close
+  file delete -force cng-rekey2.db
+  expr {$res ne "ok 1"}
+} {1}
+
+# ---------------------------------------------------------------------------
+# Group 4: HMAC and KDF algorithm variants
+# ---------------------------------------------------------------------------
+
+do_test cng-provider-4.1-hmac-sha256 {
+  file delete -force cng-hmac256.db
+  sqlite_orig db cng-hmac256.db
+  execsql {
+    PRAGMA key = 'key';
+    PRAGMA cipher_hmac_algorithm = HMAC_SHA256;
+    CREATE TABLE t(v);
+    INSERT INTO t VALUES('sha256 test');
+  }
+  db close
+
+  sqlite_orig db cng-hmac256.db
+  set res [execsql {
+    PRAGMA key = 'key';
+    PRAGMA cipher_hmac_algorithm = HMAC_SHA256;
+    SELECT v FROM t;
+  }]
+  db close
+  file delete -force cng-hmac256.db
+  set res
+} {ok sha256 test}
+
+do_test cng-provider-4.2-hmac-sha512 {
+  file delete -force cng-hmac512.db
+  sqlite_orig db cng-hmac512.db
+  execsql {
+    PRAGMA key = 'key';
+    PRAGMA cipher_hmac_algorithm = HMAC_SHA512;
+    CREATE TABLE t(v);
+    INSERT INTO t VALUES('sha512 test');
+  }
+  db close
+
+  sqlite_orig db cng-hmac512.db
+  set res [execsql {
+    PRAGMA key = 'key';
+    PRAGMA cipher_hmac_algorithm = HMAC_SHA512;
+    SELECT v FROM t;
+  }]
+  db close
+  file delete -force cng-hmac512.db
+  set res
+} {ok sha512 test}
+
+do_test cng-provider-4.3-kdf-pbkdf2-hmac-sha256 {
+  file delete -force cng-kdf256.db
+  sqlite_orig db cng-kdf256.db
+  execsql {
+    PRAGMA key = 'key';
+    PRAGMA cipher_kdf_algorithm = PBKDF2_HMAC_SHA256;
+    CREATE TABLE t(v);
+    INSERT INTO t VALUES('kdf256 test');
+  }
+  db close
+
+  sqlite_orig db cng-kdf256.db
+  set res [execsql {
+    PRAGMA key = 'key';
+    PRAGMA cipher_kdf_algorithm = PBKDF2_HMAC_SHA256;
+    SELECT v FROM t;
+  }]
+  db close
+  file delete -force cng-kdf256.db
+  set res
+} {ok kdf256 test}
+
+do_test cng-provider-4.4-kdf-pbkdf2-hmac-sha512 {
+  file delete -force cng-kdf512.db
+  sqlite_orig db cng-kdf512.db
+  execsql {
+    PRAGMA key = 'key';
+    PRAGMA cipher_kdf_algorithm = PBKDF2_HMAC_SHA512;
+    CREATE TABLE t(v);
+    INSERT INTO t VALUES('kdf512 test');
+  }
+  db close
+
+  sqlite_orig db cng-kdf512.db
+  set res [execsql {
+    PRAGMA key = 'key';
+    PRAGMA cipher_kdf_algorithm = PBKDF2_HMAC_SHA512;
+    SELECT v FROM t;
+  }]
+  db close
+  file delete -force cng-kdf512.db
+  set res
+} {ok kdf512 test}
+
+# ---------------------------------------------------------------------------
+# Group 5: Cipher properties
+# ---------------------------------------------------------------------------
+
+do_test cng-provider-5.1-cipher-name-is-aes-256-cbc {
+  sqlite_orig db :memory:
+  set cipher [execsql { PRAGMA cipher; }]
+  db close
+  set cipher
+} {AES-256-CBC}
+
+do_test cng-provider-5.2-key-size-is-32 {
+  sqlite_orig db :memory:
+  set ksz [execsql { PRAGMA cipher_key_size; }]
+  db close
+  set ksz
+} {32}
+
+do_test cng-provider-5.3-iv-size-is-16 {
+  sqlite_orig db :memory:
+  set ivsz [execsql { PRAGMA cipher_iv_size; }]
+  db close
+  set ivsz
+} {16}
+
+finish_test
