@@ -482,9 +482,10 @@ int sqlcipher_extra_init(const char* arg) {
     while(private_heap_sz >= SQLCIPHER_PRIVATE_HEAP_SIZE_STEP) {
       /* attempt to allocate the private heap. If allocation fails, reduce the size and try again */
       if((private_heap = sqlcipher_internal_malloc(private_heap_sz))) {
+        private_block *head;
         xoshiro_randomness(private_heap, (int) private_heap_sz);
-        /* initialize the head block of the linked list at the start of the heap */ 
-        private_block *head = (private_block *) private_heap; 
+        /* initialize the head block of the linked list at the start of the heap */
+        head = (private_block *) private_heap;
         head->is_used = 0;
         head->size = (u32) private_heap_sz - sizeof(private_block);
         head->next = NULL;
@@ -2421,9 +2422,9 @@ static char *sqlcipher_get_log_sources_str(unsigned int source) {
 #define MAX_LOG_LEN 8192
 void sqlcipher_log(unsigned int level, unsigned int source, const char *message, ...) {
   va_list params;
-  va_start(params, message);
   char formatted[MAX_LOG_LEN];
   size_t len = 0;
+  va_start(params, message);
 
 #ifdef CODEC_DEBUG
 #if defined(SQLCIPHER_OMIT_LOG_DEVICE) || (!defined(__ANDROID__) && !defined(__APPLE__))
