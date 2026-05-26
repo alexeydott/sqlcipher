@@ -1346,6 +1346,14 @@ LIBRESOBJS =
 # Windows CNG — dynamic load (no import library needed at link time):
 #   CFLAGS=-DSQLITE_HAS_CODEC -DSQLCIPHER_CRYPTO_CNG -DSQLCIPHER_CRYPTO_CNG_DYNAMIC
 #
+# To build testfixture.exe with full test coverage (including cipher_test PRAGMAs),
+# add -DSQLCIPHER_TEST to enable test-only APIs:
+#   nmake /f Makefile.msc testfixture.exe TCLDIR=<tcl-dir> \
+#     "CCOPTS=-DSQLITE_HAS_CODEC -DSQLCIPHER_CRYPTO_CNG -DSQLCIPHER_TEST \
+#             -DSQLITE_EXTRA_INIT=sqlcipher_extra_init \
+#             -DSQLITE_EXTRA_SHUTDOWN=sqlcipher_extra_shutdown \
+#             -DSQLITE_TEMP_STORE=2"
+#
 # Core source code files, part 1.
 #
 SRC00 = \
