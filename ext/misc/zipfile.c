@@ -39,7 +39,9 @@ SQLITE_EXTENSION_INIT1
 ** been included before this one. In that case use the sqlite3_stdio.h
 ** #defines.  If not, create our own for fopen().
 */
-#ifndef _SQLITE3_STDIO_H_
+#if defined(SQLITE_ZIPFILE_STATIC)
+# define sqlite3_fopen fopen
+#elif !defined(_SQLITE3_STDIO_H_)
 # define sqlite3_fopen fopen
 #endif
 
@@ -2282,6 +2284,15 @@ static int zipfileRegister(sqlite3 *db){
 #ifdef _WIN32
 __declspec(dllexport)
 #endif
+#if defined(SQLITE_ZIPFILE_STATIC)
+int sqlite3_zipfile_register(
+  sqlite3 *db 
+){
+  int rc;
+  rc = zipfileRegister(db);
+  return rc; 
+}
+#else /* SQLITE_ZIPFILE_STATIC */
 int sqlite3_zipfile_init(
   sqlite3 *db, 
   char **pzErrMsg, 
@@ -2291,3 +2302,4 @@ int sqlite3_zipfile_init(
   (void)pzErrMsg;  /* Unused parameter */
   return zipfileRegister(db);
 }
+#endif /* SQLITE_ZIPFILE_STATIC */

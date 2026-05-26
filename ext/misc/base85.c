@@ -142,7 +142,7 @@ static u8 base85DigitValue( char c ){
 
 static char * skipNonB85( char *s, int nc ){
   char c;
-  while( nc-- > 0 && (c = *s) && !IS_B85(c) ) ++s;
+  while( nc-- > 0 && (c == *s) && !IS_B85(c) ) ++s;
   return s;
 }
 
@@ -232,16 +232,12 @@ static u8* fromBase85( char *pIn, int ncIn, u8 *pOut ){
     switch( nbo ){
     case 4:
       *pOut++ = (qv >> 24)&0xff;
-      /* FALLTHRU */
     case 3:
       *pOut++ = (qv >> 16)&0xff;
-      /* FALLTHRU */
     case 2:
       *pOut++ = (qv >> 8)&0xff;
-      /* FALLTHRU */
     case 1:
       *pOut++ = qv&0xff;
-      /* FALLTHRU */
     case 0:
       break;
     }
@@ -262,7 +258,7 @@ static int allBase85( char *p, int len ){
 
 #ifndef BASE85_STANDALONE
 
-#ifndef OMIT_BASE85_CHECKER
+# ifndef OMIT_BASE85_CHECKER
 /* This function does the work for the SQLite is_base85(t) UDF. */
 static void is_base85(sqlite3_context *context, int na, sqlite3_value *av[]){
   assert(na==1);
@@ -282,11 +278,11 @@ static void is_base85(sqlite3_context *context, int na, sqlite3_value *av[]){
     return;
   }
 }
-#endif
+# endif
 
 /* This function does the work for the SQLite base85(x) UDF. */
 static void base85(sqlite3_context *context, int na, sqlite3_value *av[]){
-  sqlite3_int64 nb, nc, nv = sqlite3_value_bytes(av[0]);
+  int nb, nc, nv = sqlite3_value_bytes(av[0]);
   int nvMax = sqlite3_limit(sqlite3_context_db_handle(context),
                             SQLITE_LIMIT_LENGTH, -1);
   char *cBuf;
@@ -309,7 +305,7 @@ static void base85(sqlite3_context *context, int na, sqlite3_value *av[]){
       sqlite3_result_text(context,"",-1,SQLITE_STATIC);
       break;
     }
-    cBuf = sqlite3_malloc64(nc);
+    cBuf = sqlite3_malloc(nc);
     if( !cBuf ) goto memFail;
     nc = (int)(toBase85(bBuf, nb, cBuf, "\n") - cBuf);
     sqlite3_result_text(context, cBuf, nc, sqlite3_free);
@@ -331,7 +327,7 @@ static void base85(sqlite3_context *context, int na, sqlite3_value *av[]){
       sqlite3_result_zeroblob(context, 0);
       break;
     }
-    bBuf = sqlite3_malloc64(nb);
+    bBuf = sqlite3_malloc(nb);
     if( !bBuf ) goto memFail;
     nb = (int)(fromBase85(cBuf, nc, bBuf) - bBuf);
     sqlite3_result_blob(context, bBuf, nb, sqlite3_free);
@@ -352,14 +348,27 @@ static void base85(sqlite3_context *context, int na, sqlite3_value *av[]){
 #ifdef _WIN32
 __declspec(dllexport)
 #endif
+#ifndef SQLITE_BASE85_STATIC
 int sqlite3_base85_init
+#else
+int sqlite3_base85_register
+#endif
 #else
 static int sqlite3_base85_init
 #endif
-(sqlite3 *db, char **pzErr, const sqlite3_api_routines *pApi){
-  SQLITE_EXTENSION_INIT2(pApi);
-  (void)pzErr;
-#ifndef OMIT_BASE85_CHECKER
+(
+  sqlite3 *db
+#ifndef SQLITE_BASE85_STATIC
+  ,char **pzErr
+  ,const sqlite3_api_routines *pApi
+#endif
+){
+#ifndef SQLITE_BASE85_STATIC
+   SQLITE_EXTENSION_INIT2(pApi);
+   (void)pzErr;
+#endif
+  
+# ifndef OMIT_BASE85_CHECKER
   {
     int rc = sqlite3_create_function
       (db, "is_base85", 1,
@@ -367,7 +376,7 @@ static int sqlite3_base85_init
        0, is_base85, 0, 0);
     if( rc!=SQLITE_OK ) return rc;
   }
-#endif
+# endif
   return sqlite3_create_function
     (db, "base85", 1,
      SQLITE_DETERMINISTIC|SQLITE_INNOCUOUS|SQLITE_DIRECTONLY|SQLITE_UTF8,
@@ -379,8 +388,10 @@ static int sqlite3_base85_init
 ** conveniently, in conjunction with use of SQLITE_SHELL_EXTFUNCS. This
 ** allows shell.c, as distributed, to have this extension built in.
 */
+#ifndef SQLITE_BASE85_STATIC
 # define BASE85_INIT(db) sqlite3_base85_init(db, 0, 0)
 # define BASE85_EXPOSE(db, pzErr) /* Not needed, ..._init() does this. */
+# endif
 
 #else /* standalone program */
 
@@ -432,9 +443,9 @@ int main(int na, char *av[]){
         int nc = strlen(cBuf);
         size_t nbo = fromBase85( cBuf, nc, bBuf ) - bBuf;
         if( 1 != fwrite(bBuf, nbo, 1, fb) ) rc = 1;
-#ifndef OMIT_BASE85_CHECKER
+# ifndef OMIT_BASE85_CHECKER
         b85Clean &= allBase85( cBuf, nc );
-#endif
+# endif
       }
       break;
     default:

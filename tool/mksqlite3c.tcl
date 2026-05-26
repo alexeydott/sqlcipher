@@ -500,6 +500,16 @@ set flist {
    dbstat.c
    dbpage.c
    carray.c
+   closure.c
+   csv.c
+   unionvtab.c
+   zipfile.c
+   dbdump.c
+   eval.c
+   vsv.c
+   unicode.c
+   base64.c
+   base85.c
    sqlite3session.c
    fts5.c
    stmt.c

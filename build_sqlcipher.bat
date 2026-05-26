@@ -75,14 +75,20 @@ if /I "%PROVIDER%"=="dynamic" (
     set "PROVIDER_FLAGS=-DSQLCIPHER_CRYPTO_CNG -DSQLCIPHER_CRYPTO_CNG_DYNAMIC"
     set "EXTRA_LIBS="
     set "PROVIDER_DESC=CNG dynamic (LoadLibrary)"
+    rem Dynamic provider uses dynamic CRT (/MD)
+    set "CRT_FLAG=/MD"
+    set "NODEFAULTLIB_FLAGS="
 ) else (
     set "PROVIDER_FLAGS=-DSQLCIPHER_CRYPTO_CNG"
     set "EXTRA_LIBS=bcrypt.lib"
     set "PROVIDER_DESC=CNG static (bcrypt.lib)"
+    rem Static provider uses static CRT (/MT) — embed CRT into the binary
+    set "CRT_FLAG=/MT"
+    set "NODEFAULTLIB_FLAGS=/NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:vcruntime.lib /NODEFAULTLIB:ucrt.lib"
 )
 
 rem --- Compiler flags ---
-set "CFLAGS=-nologo -W3 -O2 -MD -D_CRT_SECURE_NO_WARNINGS"
+set "CFLAGS=-nologo -W3 -O2 !CRT_FLAG! -D_CRT_SECURE_NO_WARNINGS"
 set "CFLAGS=%CFLAGS% -DSQLITE_HAS_CODEC %PROVIDER_FLAGS%"
 set "CFLAGS=%CFLAGS% -DSQLITE_EXTRA_INIT=sqlcipher_extra_init"
 set "CFLAGS=%CFLAGS% -DSQLITE_EXTRA_SHUTDOWN=sqlcipher_extra_shutdown"
@@ -118,7 +124,7 @@ echo OK: sqlite3.obj
 
 if /I "%TARGET%"=="dll" (
     echo Linking sqlite3.dll...
-    link /DLL /NOLOGO /MACHINE:%MACHINE% /OUT:sqlite3.dll sqlite3.obj %EXTRA_LIBS%
+    link /DLL /NOLOGO /MACHINE:%MACHINE% /OUT:sqlite3.dll sqlite3.obj %EXTRA_LIBS% !NODEFAULTLIB_FLAGS!
     if errorlevel 1 ( echo ERROR: Link failed. & exit /b 1 )
     echo OK: sqlite3.dll
 ) else (

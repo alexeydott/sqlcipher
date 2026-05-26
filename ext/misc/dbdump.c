@@ -91,7 +91,7 @@ static void freeText(DText *p){
 ** If the third argument, quote, is not '\0', then it is used as a
 ** quote character for zAppend.
 */
-static void appendText(DText *p, char const *zAppend, char quote){
+static void dbdumpAppendText(DText *p, char const *zAppend, char quote){
   int len;
   int i;
   int nAppend = (int)(strlen(zAppend) & 0x3fffffff);
@@ -429,45 +429,45 @@ static int dump_callback(void *pArg, int nArg, char **azArg, char **azCol){
     if( azTCol==0 ) return 0;
 
     initText(&sTable);
-    appendText(&sTable, "INSERT INTO ", 0);
+    dbdumpAppendText(&sTable, "INSERT INTO ", 0);
 
     /* Always quote the table name, even if it appears to be pure ascii,
     ** in case it is a keyword. Ex:  INSERT INTO "table" ... */
-    appendText(&sTable, zTable, quoteChar(zTable));
+    dbdumpAppendText(&sTable, zTable, quoteChar(zTable));
 
     /* If preserving the rowid, add a column list after the table name.
     ** In other words:  "INSERT INTO tab(rowid,a,b,c,...) VALUES(...)"
     ** instead of the usual "INSERT INTO tab VALUES(...)".
     */
     if( azTCol[0] ){
-      appendText(&sTable, "(", 0);
-      appendText(&sTable, azTCol[0], 0);
+      dbdumpAppendText(&sTable, "(", 0);
+      dbdumpAppendText(&sTable, azTCol[0], 0);
       for(i=1; azTCol[i]; i++){
-        appendText(&sTable, ",", 0);
-        appendText(&sTable, azTCol[i], quoteChar(azTCol[i]));
+        dbdumpAppendText(&sTable, ",", 0);
+        dbdumpAppendText(&sTable, azTCol[i], quoteChar(azTCol[i]));
       }
-      appendText(&sTable, ")", 0);
+      dbdumpAppendText(&sTable, ")", 0);
     }
-    appendText(&sTable, " VALUES(", 0);
+    dbdumpAppendText(&sTable, " VALUES(", 0);
 
     /* Build an appropriate SELECT statement */
     initText(&sSelect);
-    appendText(&sSelect, "SELECT ", 0);
+    dbdumpAppendText(&sSelect, "SELECT ", 0);
     if( azTCol[0] ){
-      appendText(&sSelect, azTCol[0], 0);
-      appendText(&sSelect, ",", 0);
+      dbdumpAppendText(&sSelect, azTCol[0], 0);
+      dbdumpAppendText(&sSelect, ",", 0);
     }
     for(i=1; azTCol[i]; i++){
-      appendText(&sSelect, azTCol[i], quoteChar(azTCol[i]));
+      dbdumpAppendText(&sSelect, azTCol[i], quoteChar(azTCol[i]));
       if( azTCol[i+1] ){
-        appendText(&sSelect, ",", 0);
+        dbdumpAppendText(&sSelect, ",", 0);
       }
     }
     nCol = i;
     if( azTCol[0]==0 ) nCol--;
     freeColumnList(azTCol);
-    appendText(&sSelect, " FROM ", 0);
-    appendText(&sSelect, zTable, quoteChar(zTable));
+    dbdumpAppendText(&sSelect, " FROM ", 0);
+    dbdumpAppendText(&sSelect, zTable, quoteChar(zTable));
 
     rc = sqlite3_prepare_v2(p->db, sSelect.z, -1, &pStmt, 0);
     if( rc!=SQLITE_OK ){
@@ -629,6 +629,11 @@ static void run_schema_dump_query(
 ** Convert an SQLite database into SQL statements that will recreate that
 ** database.
 */
+#if defined(SQLITE_DB_DUMP_STATIC)
+#ifdef _WIN32
+__declspec(dllexport) 
+#endif
+#endif
 int sqlite3_db_dump(
   sqlite3 *db,               /* The database connection */
   const char *zSchema,       /* Which schema to dump.  Usually "main". */

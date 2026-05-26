@@ -951,6 +951,17 @@ static sqlite3_module CsvModuleFauxWrite = {
 #ifdef _WIN32
 __declspec(dllexport)
 #endif
+#if defined(SQLITE_CSV_STATIC)
+int sqlite3_csv_register(
+  sqlite3 *db
+){
+  int rc = SQLITE_OK;  
+#ifndef SQLITE_OMIT_VIRTUALTABLE
+  rc = sqlite3_create_module(db, "csv", &CsvModule, 0);
+#endif
+  return rc;
+}  
+#else
 /* 
 ** This routine is called when the extension is loaded.  The new
 ** CSV virtual table module is registered with the calling database
@@ -965,13 +976,9 @@ int sqlite3_csv_init(
   int rc;
   SQLITE_EXTENSION_INIT2(pApi);
   rc = sqlite3_create_module(db, "csv", &CsvModule, 0);
-#ifdef SQLITE_TEST
-  if( rc==SQLITE_OK ){
-    rc = sqlite3_create_module(db, "csv_wr", &CsvModuleFauxWrite, 0);
-  }
-#endif
   return rc;
 #else
   return SQLITE_OK;
 #endif
 }
+#endif /* SQLITE_CSV_STATIC */
