@@ -115,13 +115,13 @@ static int sqlcipher_cc_kdf(
   int key_sz, unsigned char *key
 ) {
   switch(algorithm) {
-    case SQLCIPHER_HMAC_SHA1:
+    case SQLCIPHER_PBKDF2_HMAC_SHA1:
       if(CCKeyDerivationPBKDF(kCCPBKDF2, (const char *)pass, pass_sz, salt, salt_sz, kCCPRFHmacAlgSHA1, workfactor, key, key_sz) != kCCSuccess) return SQLITE_ERROR;
       break;
-    case SQLCIPHER_HMAC_SHA256:
+    case SQLCIPHER_PBKDF2_HMAC_SHA256:
       if(CCKeyDerivationPBKDF(kCCPBKDF2, (const char *)pass, pass_sz, salt, salt_sz, kCCPRFHmacAlgSHA256, workfactor, key, key_sz) != kCCSuccess) return SQLITE_ERROR;
       break;
-    case SQLCIPHER_HMAC_SHA512:
+    case SQLCIPHER_PBKDF2_HMAC_SHA512:
       if(CCKeyDerivationPBKDF(kCCPBKDF2, (const char *)pass, pass_sz, salt, salt_sz, kCCPRFHmacAlgSHA512, workfactor, key, key_sz) != kCCSuccess) return SQLITE_ERROR;
       break;
     default:

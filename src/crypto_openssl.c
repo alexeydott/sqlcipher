@@ -139,7 +139,7 @@ static int sqlcipher_openssl_random (void *ctx, void *buffer, int length) {
   sqlite3_mutex_leave(sqlcipher_mutex(SQLCIPHER_MUTEX_PROVIDER_RAND));
   sqlcipher_log(SQLCIPHER_LOG_TRACE, SQLCIPHER_LOG_MUTEX, "sqlcipher_openssl_random: left SQLCIPHER_MUTEX_PROVIDER_RAND");
 #endif
-  if(!rc) {
+  if(rc != 1) {
     sqlcipher_log(SQLCIPHER_LOG_ERROR, SQLCIPHER_LOG_PROVIDER, "sqlcipher_openssl_random: RAND_bytes() returned %d", rc);
     sqlcipher_openssl_log_errors();
     return SQLITE_ERROR;
@@ -255,21 +255,21 @@ static int sqlcipher_openssl_kdf(
   int rc = 0;
 
   switch(algorithm) {
-    case SQLCIPHER_HMAC_SHA1:
+    case SQLCIPHER_PBKDF2_HMAC_SHA1:
       if(!(rc = PKCS5_PBKDF2_HMAC((const char *)pass, pass_sz, salt, salt_sz, workfactor, EVP_sha1(), key_sz, key))) {
         sqlcipher_log(SQLCIPHER_LOG_ERROR, SQLCIPHER_LOG_PROVIDER, "sqlcipher_openssl_kdf: PKCS5_PBKDF2_HMAC() for EVP_sha1() workfactor %d and key size %d returned %d", workfactor, key_sz, rc);
         sqlcipher_openssl_log_errors();
         goto error;
       }
       break;
-    case SQLCIPHER_HMAC_SHA256:
+    case SQLCIPHER_PBKDF2_HMAC_SHA256:
       if(!(rc = PKCS5_PBKDF2_HMAC((const char *)pass, pass_sz, salt, salt_sz, workfactor, EVP_sha256(), key_sz, key))) {
         sqlcipher_log(SQLCIPHER_LOG_ERROR, SQLCIPHER_LOG_PROVIDER, "sqlcipher_openssl_kdf: PKCS5_PBKDF2_HMAC() for EVP_sha256() workfactor %d and key size %d returned %d", workfactor, key_sz, rc);
         sqlcipher_openssl_log_errors();
         goto error;
       }
       break;
-    case SQLCIPHER_HMAC_SHA512:
+    case SQLCIPHER_PBKDF2_HMAC_SHA512:
       if(!(rc = PKCS5_PBKDF2_HMAC((const char *)pass, pass_sz, salt, salt_sz, workfactor, EVP_sha512(), key_sz, key))) {
         sqlcipher_log(SQLCIPHER_LOG_ERROR, SQLCIPHER_LOG_PROVIDER, "sqlcipher_openssl_kdf: PKCS5_PBKDF2_HMAC() for EVP_sha512() workfactor %d and key size %d returned %d", workfactor, key_sz, rc);
         sqlcipher_openssl_log_errors();
