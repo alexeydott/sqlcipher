@@ -30,6 +30,8 @@ rem    build_sqlcipher.bat x86 static lib
 rem =========================================================================
 
 rem --- Paths ---
+set "ROOT=%~dp0"
+set "ROOT=%ROOT:~0,-1%"
 set "VCVARS32=D:\VisualStudio2019\VC\Auxiliary\Build\vcvars32.bat"
 set "VCVARS64=D:\VisualStudio2019\VC\Auxiliary\Build\vcvars64.bat"
 set "ZLIBDIR=D:\projects\externals\gdal3\deps\src\zlib-1.3.1"
@@ -66,23 +68,23 @@ if not exist "%VCVARS%" (
     echo ERROR: MSVC not found: %VCVARS%
     exit /b 1
 )
-if not exist sqlite3.c (
-    echo ERROR: sqlite3.c not found. Run build_amalgamation.bat first.
+set "AMALGDIR=%ROOT%\build\%ARCH%\amalgamation"
+set "SQLITE3C=%AMALGDIR%\sqlite3.c"
+if not exist "%SQLITE3C%" (
+    echo ERROR: %SQLITE3C% not found. Run build_amalgamation.bat %ARCH% first.
     exit /b 1
 )
 if not exist "%ZLIBDIR%\zlib.h" (
     echo ERROR: zlib sources not found: %ZLIBDIR%
     exit /b 1
 )
-if not exist zconf.h (
-    if exist "%ZLIBDIR%\zconf.h.included" (
-        copy /Y "%ZLIBDIR%\zconf.h.included" zconf.h >NUL
-    )
-)
-if not exist zconf.h (
-    echo ERROR: zconf.h not found. Expected "%ZLIBDIR%\zconf.h.included".
-    exit /b 1
-)
+
+set "OUTDIR=%ROOT%\build\%ARCH%\%PROVIDER%-%TARGET%"
+if not exist "%ROOT%\build" mkdir "%ROOT%\build"
+if not exist "%ROOT%\build\%ARCH%" mkdir "%ROOT%\build\%ARCH%"
+if exist "%OUTDIR%" rmdir /Q /S "%OUTDIR%"
+mkdir "%OUTDIR%"
+if errorlevel 1 exit /b %errorlevel%
 
 rem --- Provider flags ---
 if /I "%PROVIDER%"=="dynamic" (
@@ -110,7 +112,7 @@ set "CFLAGS=%CFLAGS% -DSQLITE_TEMP_STORE=2"
 set "CFLAGS=%CFLAGS% -DSQLITE_THREADSAFE=1"
 set "CFLAGS=%CFLAGS% -DSQLITE_ENABLE_FTS5 -DSQLITE_ENABLE_RTREE"
 set "CFLAGS=%CFLAGS% -DSQLITE_ENABLE_COLUMN_METADATA"
-set "CFLAGS=%CFLAGS% -DSQLITE_HAVE_ZLIB=1 -I. -I%ZLIBDIR%"
+set "CFLAGS=%CFLAGS% -DSQLITE_HAVE_ZLIB=1 -I%OUTDIR% -I%AMALGDIR% -I%ROOT% -I%ZLIBDIR%"
 
 echo.
 echo =========================================================================
@@ -118,11 +120,28 @@ echo  SQLCipher build
 echo    Architecture : %ARCH%
 echo    Provider     : %PROVIDER_DESC%
 echo    Target       : %TARGET%
+echo    Output       : %OUTDIR%
 echo =========================================================================
 echo.
 
 call "%VCVARS%"
 if errorlevel 1 goto vcvars_failed
+
+copy /Y "%ZLIBDIR%\zlib.h" "%OUTDIR%\zlib.h" >NUL
+if errorlevel 1 exit /b %errorlevel%
+if exist "%ZLIBDIR%\zconf.h" (
+    copy /Y "%ZLIBDIR%\zconf.h" "%OUTDIR%\zconf.h" >NUL
+) else if exist "%ZLIBDIR%\zconf.h.included" (
+    copy /Y "%ZLIBDIR%\zconf.h.included" "%OUTDIR%\zconf.h" >NUL
+)
+if errorlevel 1 exit /b %errorlevel%
+if not exist "%OUTDIR%\zconf.h" (
+    echo ERROR: zconf.h not found. Expected "%ZLIBDIR%\zconf.h" or "%ZLIBDIR%\zconf.h.included".
+    exit /b 1
+)
+
+pushd "%OUTDIR%"
+if errorlevel 1 exit /b %errorlevel%
 
 rem DLL export flag - stored separately so delayed expansion avoids ( ) issues
 set "DLL_EXPORT=-DSQLITE_API=__declspec(dllexport)"
@@ -152,9 +171,9 @@ for %%S in (
 rem --- Compile sqlite3.c to sqlite3.obj ---
 echo Compiling sqlite3.c...
 if /I "%TARGET%"=="dll" (
-    cl %CFLAGS% !DLL_EXPORT! /c sqlite3.c /Fo:sqlite3.obj
+    cl %CFLAGS% !DLL_EXPORT! /c "%SQLITE3C%" /Fo:sqlite3.obj
 ) else (
-    cl %CFLAGS% /c sqlite3.c /Fo:sqlite3.obj
+    cl %CFLAGS% /c "%SQLITE3C%" /Fo:sqlite3.obj
 )
 if errorlevel 1 ( echo ERROR: Compile failed. & exit /b 1 )
 echo OK: sqlite3.obj
@@ -175,6 +194,7 @@ echo.
 echo =========================================================================
 echo  DONE
 echo =========================================================================
+popd
 exit /b 0
 
 :usage

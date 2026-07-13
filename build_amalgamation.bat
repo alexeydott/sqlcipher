@@ -7,11 +7,14 @@ rem   build_amalgamation.bat        builds with the x64 MSVC environment
 rem   build_amalgamation.bat x86    builds with the x86 MSVC environment
 rem   build_amalgamation.bat x64    builds with the x64 MSVC environment
 
+set "ROOT=%~dp0"
+set "ROOT=%ROOT:~0,-1%"
 set "ARCH=%~1"
 if "%ARCH%"=="" set "ARCH=x64"
 
 set "TCLDIR=D:\tools\tcl"
 set "BISONDIR=D:\tools\bison"
+set "PERLDIR=C:\ProgramData\strawberry\perl"
 set "VCVARS32=D:\VisualStudio2019\VC\Auxiliary\Build\vcvars32.bat"
 set "VCVARS64=D:\VisualStudio2019\VC\Auxiliary\Build\vcvars64.bat"
 
@@ -28,6 +31,10 @@ if not exist "%VCVARS%" (
   echo MSVC environment script not found: "%VCVARS%"
   exit /b 1
 )
+if not exist "%PERLDIR%\bin\perl.exe" (
+  echo Perl was not found under "%PERLDIR%\bin".
+  exit /b 1
+)
 
 if not exist "%TCLDIR%\bin\tclsh.exe" (
   if not exist "%TCLDIR%\bin\tclsh86.exe" (
@@ -41,20 +48,28 @@ if not exist "%TCLDIR%\bin\tclsh.exe" (
 call "%VCVARS%"
 if errorlevel 1 exit /b %errorlevel%
 
-set "PATH=%TCLDIR%\bin;%BISONDIR%;%BISONDIR%\bin;%PATH%"
+set "OUTDIR=%ROOT%\build\%ARCH%\amalgamation"
+if not exist "%ROOT%\build" mkdir "%ROOT%\build"
+if not exist "%ROOT%\build\%ARCH%" mkdir "%ROOT%\build\%ARCH%"
+if exist "%OUTDIR%" rmdir /Q /S "%OUTDIR%"
+mkdir "%OUTDIR%"
+if errorlevel 1 exit /b %errorlevel%
 
-nmake /f Makefile.msc sqlite3.c ^
+pushd "%OUTDIR%"
+if errorlevel 1 exit /b %errorlevel%
+
+set "PATH=%TCLDIR%\bin;%BISONDIR%;%BISONDIR%\bin;%PERLDIR%\bin;%PATH%"
+
+nmake /f "%ROOT%\Makefile.msc" sqlite3.c ^
+  "TOP=%ROOT%" ^
   "TCLDIR=%TCLDIR%" ^
   "NO_TCL=1" ^
   "WITHOUT_JIMSH=1"
-if errorlevel 1 exit /b %errorlevel%
+if errorlevel 1 (
+  popd
+  exit /b %errorlevel%
+)
 
-rem Keep the generated amalgamation sources and remove build-only tools.
-del /Q *.exe *.obj *.ilk *.pdb 2>NUL
-del /Q parse.c parse.h parse.out parse.sql parse.y 2>NUL
-del /Q fts5parse.c fts5parse.h fts5parse.out fts5parse.sql fts5parse.y 2>NUL
-del /Q ctime.c fts5.c fts5.h keywordhash.h lempar.c opcodes.c opcodes.h pragma.h shell.c sqlite3session.h tclsqlite-ex.c 2>NUL
-if exist tsrc rmdir /Q /S tsrc
-
-echo Generated sqlite3.c and headers.
+popd
+echo Generated amalgamation under "%OUTDIR%".
 exit /b 0
