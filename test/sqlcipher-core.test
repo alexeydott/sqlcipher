@@ -74,6 +74,34 @@ do_test will-open-with-correct-derived-key {
 db close
 file delete -force test.db
 
+# compatibility textkey pragma
+setup test.db "'testkey'"
+do_test will-open-with-correct-derived-textkey {
+
+  sqlite_orig db test.db
+  execsql {
+    PRAGMA textkey = 'testkey';
+    SELECT name FROM sqlite_schema WHERE type='table';
+    SELECT * from t1;
+  }
+} {ok t1 test1 test2}
+db close
+file delete -force test.db
+
+setup test.db "'testkey'"
+do_test will-open-with-correct-derived-hexkey {
+
+  sqlite_orig db test.db
+  execsql {
+    PRAGMA hexkey = '746573746b6579';
+    SELECT name FROM sqlite_schema WHERE type='table';
+    SELECT * from t1;
+  }
+} {ok t1 test1 test2}
+db close
+file delete -force test.db
+
+
 # run test with sqlite3_key function directly
 setup test.db "'testkey'"
 do_test will-open-with-sqlite3key {

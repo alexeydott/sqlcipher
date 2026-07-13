@@ -475,14 +475,14 @@ do_test export-nulls {
 db close
 file delete -force test.db
 
-do_test export-nulls {
+do_test export-nulls-source {
   sqlite_orig db test.db
 
   catchsql {
     SELECT sqlcipher_export('main', NULL);
   }
 
-} {1 {target database can't be NULL}}
+} {1 {source database can't be NULL}}
 db close
 file delete -force test.db
 
@@ -1213,7 +1213,7 @@ do_test migrate-failure-not-readable {
     PRAGMA cipher_test_off = fail_migrate;
     PRAGMA cipher_test;
   }]
-} {{ok 1} {1 {out of memory}} 0}
+} {{ok 1} {1 {file is not a database}} 0}
 db close
 file delete -force test.db 
 
@@ -1229,6 +1229,25 @@ do_test migrate-current-format-noop {
     SELECT count(*) FROM sqlite_schema;
   }
 } {ok 0 1}
+db close
+file delete -force test.db 
+
+# migrate should fail after key derivation occurs
+# key database, then force key derivation by touching schema
+# shoudl report SQLITE_MISUSE
+do_test migrate-fail-after-key-derivation {
+  file copy -force $sampleDir/sqlcipher-4.0-testkey.db test.db
+  sqlite_orig db test.db
+
+  execsql {
+    PRAGMA key = 'testkey';
+    PRAGMA cipher_integrity_check;
+  }
+  
+  execsql { 
+    PRAGMA cipher_migrate;
+  }
+} {21}
 db close
 file delete -force test.db 
 

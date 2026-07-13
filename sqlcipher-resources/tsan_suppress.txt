@@ -1,0 +1,5 @@
+race:mutex.c
+race:mutex_unix.c
+race:pager.c
+race:test_malloc.c
+race:vdbe.c
