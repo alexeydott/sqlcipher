@@ -730,6 +730,20 @@ SRC += \
 SRC += \
   $(TOP)/ext/misc/stmt.c
 
+# Extension sources copied into tsrc only for amalgamation generation.
+#
+AMALGAMATION_EXTRA_SRC = \
+  $(TOP)/ext/misc/base64.c \
+  $(TOP)/ext/misc/base85.c \
+  $(TOP)/ext/misc/closure.c \
+  $(TOP)/ext/misc/csv.c \
+  $(TOP)/ext/misc/dbdump.c \
+  $(TOP)/ext/misc/eval.c \
+  $(TOP)/ext/misc/unicode.c \
+  $(TOP)/ext/misc/unionvtab.c \
+  $(TOP)/ext/misc/vsv.c \
+  $(TOP)/ext/misc/zipfile.c
+
 # Generated source code files
 #
 SRC += \
@@ -1093,11 +1107,11 @@ T.link.tcl = $(T.tcl.env.source); $(T.link)
 # files are automatically generated.  This target takes care of
 # all that automatic generation.
 #
-.target_source: $(MAKE_SANITY_CHECK) $(SRC) $(TOP)/tool/vdbe-compress.tcl \
+.target_source: $(MAKE_SANITY_CHECK) $(SRC) $(AMALGAMATION_EXTRA_SRC) $(TOP)/tool/vdbe-compress.tcl \
     fts5.c $(B.tclsh)
 	rm -rf tsrc
 	mkdir tsrc
-	cp -f $(SRC) tsrc
+	cp -f $(SRC) $(AMALGAMATION_EXTRA_SRC) tsrc
 	rm -f tsrc/sqlite.h.in tsrc/parse.y
 	$(B.tclsh) $(TOP)/tool/vdbe-compress.tcl $(OPTS) <tsrc/vdbe.c >vdbe.new
 	mv -f vdbe.new tsrc/vdbe.c
