@@ -2,7 +2,7 @@
 setlocal EnableDelayedExpansion
 
 rem =========================================================================
-rem  build_sqlcipher.bat  —  Compile SQLCipher DLL or static lib
+rem  build_sqlcipher.bat - Compile SQLCipher DLL or static lib
 rem
 rem  Prerequisite: sqlite3.c must already exist.
 rem                Run build_amalgamation.bat to regenerate it if needed.
@@ -15,8 +15,8 @@ rem    x64           64-bit (default)
 rem    x86           32-bit
 rem
 rem  provider:
-rem    static        CNG — link bcrypt.lib (default)
-rem    dynamic       CNG — LoadLibrary("bcrypt.dll"), no import lib
+rem    static        CNG - link bcrypt.lib (default)
+rem    dynamic       CNG - LoadLibrary("bcrypt.dll"), no import lib
 rem
 rem  target:
 rem    dll           sqlite3.dll + sqlite3.lib import lib (default)
@@ -32,6 +32,7 @@ rem =========================================================================
 rem --- Paths ---
 set "VCVARS32=D:\VisualStudio2019\VC\Auxiliary\Build\vcvars32.bat"
 set "VCVARS64=D:\VisualStudio2019\VC\Auxiliary\Build\vcvars64.bat"
+set "ZLIBDIR=D:\projects\externals\gdal3\deps\src\zlib-1.3.1"
 
 rem --- Defaults ---
 set "ARCH=x64"
@@ -69,6 +70,19 @@ if not exist sqlite3.c (
     echo ERROR: sqlite3.c not found. Run build_amalgamation.bat first.
     exit /b 1
 )
+if not exist "%ZLIBDIR%\zlib.h" (
+    echo ERROR: zlib sources not found: %ZLIBDIR%
+    exit /b 1
+)
+if not exist zconf.h (
+    if exist "%ZLIBDIR%\zconf.h.included" (
+        copy /Y "%ZLIBDIR%\zconf.h.included" zconf.h >NUL
+    )
+)
+if not exist zconf.h (
+    echo ERROR: zconf.h not found. Expected "%ZLIBDIR%\zconf.h.included".
+    exit /b 1
+)
 
 rem --- Provider flags ---
 if /I "%PROVIDER%"=="dynamic" (
@@ -82,7 +96,7 @@ if /I "%PROVIDER%"=="dynamic" (
     set "PROVIDER_FLAGS=-DSQLCIPHER_CRYPTO_CNG"
     set "EXTRA_LIBS=bcrypt.lib"
     set "PROVIDER_DESC=CNG static (bcrypt.lib)"
-    rem Static provider uses static CRT (/MT) — embed CRT into the binary
+    rem Static provider uses static CRT (/MT) - embed CRT into the binary
     set "CRT_FLAG=/MT"
     set "NODEFAULTLIB_FLAGS=/NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:vcruntime.lib /NODEFAULTLIB:ucrt.lib"
 )
@@ -96,6 +110,7 @@ set "CFLAGS=%CFLAGS% -DSQLITE_TEMP_STORE=2"
 set "CFLAGS=%CFLAGS% -DSQLITE_THREADSAFE=1"
 set "CFLAGS=%CFLAGS% -DSQLITE_ENABLE_FTS5 -DSQLITE_ENABLE_RTREE"
 set "CFLAGS=%CFLAGS% -DSQLITE_ENABLE_COLUMN_METADATA"
+set "CFLAGS=%CFLAGS% -DSQLITE_HAVE_ZLIB=1 -I. -I%ZLIBDIR%"
 
 echo.
 echo =========================================================================
@@ -107,12 +122,34 @@ echo =========================================================================
 echo.
 
 call "%VCVARS%"
-if errorlevel 1 ( echo ERROR: Failed to initialise MSVC environment. & exit /b 1 )
+if errorlevel 1 goto vcvars_failed
 
-rem DLL export flag — stored separately so delayed expansion avoids ( ) issues
+rem DLL export flag - stored separately so delayed expansion avoids ( ) issues
 set "DLL_EXPORT=-DSQLITE_API=__declspec(dllexport)"
 
-rem --- Compile sqlite3.c → sqlite3.obj ---
+rem --- Compile zlib sources needed by zipfile.c ---
+set "ZLIB_OBJS="
+for %%S in (
+    adler32.c
+    compress.c
+    crc32.c
+    deflate.c
+    infback.c
+    inffast.c
+    inftrees.c
+    inflate.c
+    trees.c
+    uncompr.c
+    zutil.c
+) do (
+    set "ZLIB_OBJ=zlib_%%~nS.obj"
+    echo Compiling zlib %%S...
+    cl -nologo -W3 -O2 !CRT_FLAG! -D_CRT_SECURE_NO_WARNINGS -I. -I"%ZLIBDIR%" /c "%ZLIBDIR%\%%S" /Fo"!ZLIB_OBJ!"
+    if errorlevel 1 goto zlib_failed
+    set "ZLIB_OBJS=!ZLIB_OBJS! !ZLIB_OBJ!"
+)
+
+rem --- Compile sqlite3.c to sqlite3.obj ---
 echo Compiling sqlite3.c...
 if /I "%TARGET%"=="dll" (
     cl %CFLAGS% !DLL_EXPORT! /c sqlite3.c /Fo:sqlite3.obj
@@ -124,12 +161,12 @@ echo OK: sqlite3.obj
 
 if /I "%TARGET%"=="dll" (
     echo Linking sqlite3.dll...
-    link /DLL /NOLOGO /MACHINE:%MACHINE% /OUT:sqlite3.dll sqlite3.obj %EXTRA_LIBS% !NODEFAULTLIB_FLAGS!
+    link /DLL /NOLOGO /MACHINE:%MACHINE% /OUT:sqlite3.dll sqlite3.obj !ZLIB_OBJS! %EXTRA_LIBS% !NODEFAULTLIB_FLAGS!
     if errorlevel 1 ( echo ERROR: Link failed. & exit /b 1 )
     echo OK: sqlite3.dll
 ) else (
     echo Building sqlite3.lib...
-    lib /NOLOGO /MACHINE:%MACHINE% /OUT:sqlite3.lib sqlite3.obj
+    lib /NOLOGO /MACHINE:%MACHINE% /OUT:sqlite3.lib sqlite3.obj !ZLIB_OBJS!
     if errorlevel 1 ( echo ERROR: lib failed. & exit /b 1 )
     echo OK: sqlite3.lib
 )
@@ -148,3 +185,11 @@ echo   build_sqlcipher.bat                  x64, CNG static, DLL
 echo   build_sqlcipher.bat x64 dynamic dll  x64, CNG dynamic, DLL
 echo   build_sqlcipher.bat x86 static lib   x86, CNG static, static lib
 exit /b 2
+
+:vcvars_failed
+echo ERROR: Failed to initialise MSVC environment.
+exit /b 1
+
+:zlib_failed
+echo ERROR: zlib compile failed.
+exit /b 1

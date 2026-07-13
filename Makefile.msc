@@ -1362,7 +1362,6 @@ SRC00 = \
 	$(TOP)\src\crypto_cng.c \
 	$(TOP)\src\crypto_libtomcrypt.c \
 	$(TOP)\src\crypto_openssl.c \
-	$(TOP)\src\sqlcipher.h \
   $(TOP)\src\alter.c \
   $(TOP)\src\analyze.c \
   $(TOP)\src\attach.c \
@@ -1467,7 +1466,8 @@ SRC04 = \
   $(TOP)\src\os.h \
   $(TOP)\src\os_common.h \
   $(TOP)\src\os_setup.h \
-  $(TOP)\src\os_win.h
+  $(TOP)\src\os_win.h \
+  $(TOP)\src\sqlcipher.h
 
 # Core header files, part 2.
 #
@@ -1506,6 +1506,20 @@ SRC07 = \
   $(TOP)\ext\session\sqlite3session.c \
   $(TOP)\ext\rbu\sqlite3rbu.c \
   $(TOP)\ext\misc\stmt.c
+
+# Extension sources copied into tsrc only for amalgamation generation.
+#
+AMALGAMATION_EXTRA_SRC = \
+  $(TOP)\ext\misc\base64.c \
+  $(TOP)\ext\misc\base85.c \
+  $(TOP)\ext\misc\closure.c \
+  $(TOP)\ext\misc\csv.c \
+  $(TOP)\ext\misc\dbdump.c \
+  $(TOP)\ext\misc\eval.c \
+  $(TOP)\ext\misc\unicode.c \
+  $(TOP)\ext\misc\unionvtab.c \
+  $(TOP)\ext\misc\vsv.c \
+  $(TOP)\ext\misc\zipfile.c
 
 # Extension header files, part 2.
 #
@@ -1978,10 +1992,10 @@ mptest:	mptester.exe
 # files are automatically generated.  This target takes care of
 # all that automatic generation.
 #
-.target_source:	$(SRC) $(TOP)\tool\vdbe-compress.tcl fts5.c $(SQLITE_TCL_DEP) $(JIM_TCLSH)
+.target_source:	$(SRC) $(AMALGAMATION_EXTRA_SRC) $(TOP)\tool\vdbe-compress.tcl fts5.c $(SQLITE_TCL_DEP) $(JIM_TCLSH)
 	-rmdir /Q/S tsrc 2>NUL
 	-mkdir tsrc
-        $(JIM_TCLSH) $(TOP)\tool\cp.tcl $(SRC00) $(SRC01) $(SRC03) $(SRC04) $(SRC05) $(SRC07) $(SRC09) $(SRC10) $(SRC11) $(SRC12) fts5.c fts5.h tsrc
+        $(JIM_TCLSH) $(TOP)\tool\cp.tcl $(SRC00) $(SRC01) $(SRC03) $(SRC04) $(SRC05) $(SRC07) $(SRC09) $(SRC10) $(SRC11) $(SRC12) $(AMALGAMATION_EXTRA_SRC) fts5.c fts5.h tsrc
 	copy /B tsrc\fts5.c +,,
 	copy /B tsrc\fts5.h +,,
 	del /Q tsrc\sqlite.h.in tsrc\parse.y 2>NUL

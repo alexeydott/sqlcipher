@@ -21,6 +21,9 @@ SQLITE_EXTENSION_INIT1
 #include "sqlite3.h"
 #endif
 
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #ifndef SQLITE_EXPORT
@@ -820,8 +823,11 @@ SQLITE_PRIVATE
   /* xShadowName */ 0
   };
 
-SQLITE_PRIVATE
+#ifdef SQLITE_AMALGAMATION
+static int sqlite3_define_register(sqlite3* db) {
+#else
 int sqlite3_define_register(sqlite3* db) {
+#endif
   int rc = SQLITE_OK;
 #ifndef SQLITE_OMIT_VIRTUALTABLE
   rc = sqlite3_create_module(db, "define", &DefineModule, NULL);
@@ -856,7 +862,9 @@ SQLITE_API
 int sqlite3_eval_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi){
   
   int rc = SQLITE_OK;
+#ifndef SQLITE_CORE
   SQLITE_EXTENSION_INIT2(pApi);
+#endif
   (void)pzErrMsg;  /* Unused parameter */
   
   rc = sqlite3_eval_register(db);  
