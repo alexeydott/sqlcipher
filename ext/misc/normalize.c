@@ -49,7 +49,9 @@
 ** command-line program, compile this file with -DSQLITE_NORMALIZE_CLI
 ** and link it against the SQLite library.
 */
+#if !defined(SQLITE_AMALGAMATION)
 #include <sqlite3.h>
+#endif
 #include <string.h>
 
 /*
@@ -66,6 +68,7 @@
 */
 
 
+#if !defined(SQLITE_AMALGAMATION)
 /* Character classes for tokenizing
 **
 ** In the sqlite3GetToken() function, a switch() on aiClass[c] is implemented
@@ -552,8 +555,48 @@ static sqlite3_int64 sqlite3GetToken(const unsigned char *z, int *tokenType){
   *tokenType = TK_ID;
   return i;
 }
+#  define nrmGetToken sqlite3GetToken
 
-char *sqlite3_normalize(const char *zSql){
+#else /* defined(SQLITE_AMALGAMATION) */
+/*
+** In amalgamation mode the tokenizer tables and sqlite3GetToken() are
+** already compiled as part of the core.  Provide a thin wrapper that maps
+** the core TK_* token-type values to the five categories used by
+** sqlite3_normalize() below.
+*/
+#  define NRM_TK_SPACE   0
+#  define NRM_TK_NAME    1
+#  define NRM_TK_LITERAL 2
+#  define NRM_TK_PUNCT   3
+#  define NRM_TK_ERROR   4
+
+static sqlite3_int64 nrmGetToken(const unsigned char *z, int *pType){
+  int t;
+  sqlite3_int64 n = (sqlite3_int64)sqlite3GetToken(z, &t);
+  if( t==TK_SPACE )   { *pType = NRM_TK_SPACE;   return n; }
+  if( t==TK_ILLEGAL ) { *pType = NRM_TK_ERROR;   return n; }
+  if( t==TK_INTEGER || t==TK_FLOAT || t==TK_STRING
+   || t==TK_BLOB || t==TK_VARIABLE ){
+    *pType = NRM_TK_LITERAL; return n;
+  }
+  if( t==TK_ID ){ *pType = NRM_TK_NAME; return n; }
+  *pType = NRM_TK_PUNCT;
+  return n;
+}
+
+/* Map normalize's symbolic names to the NRM_TK_* category values. */
+#  undef TK_SPACE
+#  define TK_SPACE   NRM_TK_SPACE
+#  undef TK_ERROR
+#  define TK_ERROR   NRM_TK_ERROR
+#  define TK_LITERAL NRM_TK_LITERAL
+#  define TK_PUNCT   NRM_TK_PUNCT
+#  define TK_NAME    NRM_TK_NAME
+#  define testcase(X)
+
+#endif /* !SQLITE_AMALGAMATION */
+
+SQLITE_API char *sqlite3_normalize(const char *zSql){
   char *z;              /* The output string */
   sqlite3_int64 nZ;     /* Size of the output string in bytes */
   sqlite3_int64 nSql;   /* Size of the input string in bytes */
@@ -568,7 +611,7 @@ char *sqlite3_normalize(const char *zSql){
   z = sqlite3_malloc64( nZ+2 );
   if( z==0 ) return 0;
   for(i=j=0; zSql[i]; i += n){
-    n = sqlite3GetToken((unsigned char*)zSql+i, &tokenType);
+    n = nrmGetToken((unsigned char*)zSql+i, &tokenType);
     switch( tokenType ){
       case TK_SPACE: {
         break;
