@@ -1,6 +1,6 @@
 # AGENTS.md
 
-> This file is maintained by AI Factory. Update it when the project structure changes significantly.
+> Update it when the project structure changes significantly.
 
 ## Project Overview
 
