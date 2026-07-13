@@ -555,4 +555,9 @@ Module *sqlite3CarrayRegister(sqlite3 *db){
   return sqlite3VtabCreateModule(db, "carray", &carrayModule, 0, 0);
 }
 
+/* Public API wrapper for static-link builds (e.g. Delphi/BCC). */
+SQLITE_API int sqlite3_carray_register(sqlite3 *db){
+  return sqlite3CarrayRegister(db) ? SQLITE_OK : SQLITE_ERROR;
+}
+
 #endif /* !defined(SQLITE_OMIT_VIRTUALTABLE) && defined(SQLITE_ENABLE_CARRAY) */

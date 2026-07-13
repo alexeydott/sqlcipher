@@ -192,6 +192,12 @@ SQLITE_EXTENSION_INIT1
 #  include <windows.h>
 #  include <io.h>
 #  include <fcntl.h>
+#  ifndef O_RDONLY
+#    define O_RDONLY 0
+#  endif
+#  ifndef O_BINARY
+#    define O_BINARY 0x8000
+#  endif
 extern FILE *fdopen(int, const char *);
 #endif
 
