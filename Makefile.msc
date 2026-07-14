@@ -1516,6 +1516,7 @@ AMALGAMATION_EXTRA_SRC = \
   $(TOP)\ext\misc\csv.c \
   $(TOP)\ext\misc\dbdump.c \
   $(TOP)\ext\misc\eval.c \
+  $(TOP)\ext\misc\normalize.c \
   $(TOP)\ext\misc\unicode.c \
   $(TOP)\ext\misc\unionvtab.c \
   $(TOP)\ext\misc\vsv.c \
