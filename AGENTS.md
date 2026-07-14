@@ -1,6 +1,6 @@
 # AGENTS.md
 
-> This file is maintained by AI Factory. Update it when the project structure changes significantly.
+> Update it when the project structure changes significantly.
 
 ## Project Overview
 
@@ -80,9 +80,7 @@ sqlcipher/
 | File | Purpose |
 |------|---------|
 | AGENTS.md | Project structure map for AI agents and new contributors |
-| .ai-factory/DESCRIPTION.md | Detailed project specification and tech stack |
-| .ai-factory/ARCHITECTURE.md | Architecture guidelines and patterns |
-| .ai-factory/rules/base.md | Detected coding conventions for this codebase |
+
 
 ## Agent Rules
 
