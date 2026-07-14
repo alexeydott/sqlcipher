@@ -184,6 +184,12 @@ if /I "%TARGET%"=="dll" (
     if errorlevel 1 ( echo ERROR: Link failed. & exit /b 1 )
     echo OK: sqlite3.dll
 ) else (
+    if /I "%PROVIDER%"=="static" (
+        echo Building zlib.lib...
+        lib /NOLOGO /MACHINE:%MACHINE% /OUT:zlib.lib !ZLIB_OBJS!
+        if errorlevel 1 ( echo ERROR: zlib lib failed. & exit /b 1 )
+        echo OK: zlib.lib
+    )
     echo Building sqlite3.lib...
     lib /NOLOGO /MACHINE:%MACHINE% /OUT:sqlite3.lib sqlite3.obj !ZLIB_OBJS!
     if errorlevel 1 ( echo ERROR: lib failed. & exit /b 1 )
