@@ -506,6 +506,7 @@ set flist {
    zipfile.c
    dbdump.c
    eval.c
+   normalize.c
    vsv.c
    unicode.c
    base64.c
