@@ -1,6 +1,13 @@
 # SQLCipher Change Log
 Notable changes to this project are documented in this file.
 
+## [4.18.0] - (August 2026 - [4.18.0 changes])
+- Update baseline to SQLite 3.53.4
+- Add comment clarifying intent of `crypto_openssl.c`
+- Fix relocation truncated to fit error for optimized GCC builds
+- Avoid allocating memory on Windows during log writes which could cause a crash on Windows
+  under non-default log settings with `PRAGMA cipher_memory_security = ON`
+
 ## [4.17.0] - (July 2026 - [4.17.0 changes])
 - Update baseline to SQLite 3.53.3
 - Normalize error behavior for incorrect keys when first operation attempts to modfiy the schema
@@ -348,8 +355,10 @@ Notable changes to this project are documented in this file.
 ### Security
 - Change KDF iteration length from 4,000 to 64,000
 
+[4.18.0]: https://github.com/sqlcipher/sqlcipher/tree/v4.18.0
+[4.18.0 changes]: https://github.com/sqlcipher/sqlcipher/compare/v4.17.0...v4.18.0
 [4.17.0]: https://github.com/sqlcipher/sqlcipher/tree/v4.17.0
-[4.17.0 changes]: https://github.com/sqlcipher/sqlcipher/compare/v4.17.0...v4.17.0
+[4.17.0 changes]: https://github.com/sqlcipher/sqlcipher/compare/v4.16.0...v4.17.0
 [4.16.0]: https://github.com/sqlcipher/sqlcipher/tree/v4.16.0
 [4.16.0 changes]: https://github.com/sqlcipher/sqlcipher/compare/v4.15.0...v4.16.0
 [4.15.0]: https://github.com/sqlcipher/sqlcipher/tree/v4.15.0
