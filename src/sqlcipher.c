@@ -3848,11 +3848,12 @@ int sqlite3_rekey_v2(sqlite3 *db, const char *zDb, const void *pKey, int nKey) {
   }
 
   if(db && pKey && nKey > 0) {
+    int db_index;
+    struct Db *pDb = NULL;
     sqlcipher_log(SQLCIPHER_LOG_TRACE, SQLCIPHER_LOG_MUTEX, "%s: entering database mutex %p", __func__, db->mutex);
     sqlite3_mutex_enter(db->mutex);
     sqlcipher_log(SQLCIPHER_LOG_TRACE, SQLCIPHER_LOG_MUTEX, "%s: entered database mutex %p", __func__, db->mutex);
-    int db_index = sqlcipher_find_db_index(db, zDb);
-    struct Db *pDb = NULL;
+    db_index = sqlcipher_find_db_index(db, zDb);
 
     if(!(db_index >= 0 && db_index < db->nDb)) {
       sqlcipher_log(SQLCIPHER_LOG_ERROR, SQLCIPHER_LOG_CORE, "%s: invalid database zDb=%p", __func__, zDb);
