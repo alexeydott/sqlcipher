@@ -1,6 +1,17 @@
 # SQLCipher Change Log
 Notable changes to this project are documented in this file.
 
+## [4.19.0] - (? 2026 - [4.19.0 changes])
+- Report an error if a database is opened with an invalid hexkey URI parameter 
+- Include provider error code in KDF error message
+- Fix escaping of migration file names
+- Fix escaping of database aliases in `sqlcipher_export()`
+- Avoid returning NULL rows when from `cipher_settings` if allocation fails
+- Adjust behavior for permanent error states
+- Avoid leaking partially initialized context if an initialization error occurs
+- Fix error reporting for failed rekey operations
+- Improve consistency of internal memory utilization tracking
+
 ## [4.18.0] - (August 2026 - [4.18.0 changes])
 - Update baseline to SQLite 3.53.4
 - Add comment clarifying intent of `crypto_openssl.c`
@@ -355,6 +366,8 @@ Notable changes to this project are documented in this file.
 ### Security
 - Change KDF iteration length from 4,000 to 64,000
 
+[4.19.0]: https://github.com/sqlcipher/sqlcipher/tree/v4.19.0
+[4.19.0 changes]: https://github.com/sqlcipher/sqlcipher/compare/v4.18.0...v4.19.0
 [4.18.0]: https://github.com/sqlcipher/sqlcipher/tree/v4.18.0
 [4.18.0 changes]: https://github.com/sqlcipher/sqlcipher/compare/v4.17.0...v4.18.0
 [4.17.0]: https://github.com/sqlcipher/sqlcipher/tree/v4.17.0
