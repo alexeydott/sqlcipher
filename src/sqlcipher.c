@@ -97,7 +97,7 @@ void sqlite3pager_reset(Pager *pPager);
 #define CIPHER_STR(s) #s
 
 #ifndef CIPHER_VERSION_NUMBER
-#define CIPHER_VERSION_NUMBER 4.19.0
+#define CIPHER_VERSION_NUMBER 4.20.0
 #endif
 
 #ifndef CIPHER_VERSION_BUILD
@@ -415,10 +415,12 @@ static void sqlcipher_atexit(void) {
   sqlcipher_extra_shutdown();
 }
 
+#if !defined(__wasm__)
 static void sqlcipher_fini(void) {
   sqlcipher_log(SQLCIPHER_LOG_DEBUG, SQLCIPHER_LOG_CORE, "%s: calling sqlcipher_extra_shutdown()", __func__);
   sqlcipher_extra_shutdown();
 }
+#endif
 
 #if defined(_WIN32)
   #ifndef SQLCIPHER_OMIT_DLLMAIN
@@ -445,6 +447,9 @@ static void sqlcipher_fini(void) {
   #else
     static void (*const sqlcipher_fini_func)(void) __attribute__((used, section("__DATA,__mod_term_func"))) = sqlcipher_fini;
   #endif
+#elif defined(__wasm__)
+  /* WebAssembly objects cannot hold a .fini_array section. The atexit() handler
+     registered in sqlcipher_extra_init covers the WebAssembly targets that exit. */
 #else
 static void (*const sqlcipher_fini_func)(void) __attribute__((used, section(".fini_array"))) = sqlcipher_fini;
 #endif
@@ -2176,13 +2181,13 @@ static int sqlcipher_codec_ctx_migrate(codec_ctx *ctx) {
   if(pass_sz < 1 || !ctx->read_ctx->pass) {
     sqlcipher_log(SQLCIPHER_LOG_ERROR, SQLCIPHER_LOG_CORE, "%s: underived key material is not available. PRAGMA cipher_migrate MUST be run as the first operation after keying", __func__);
     rc = SQLITE_MISUSE;
-    goto handle_error;
+    goto cleanup;
   }
 
   if(!(pass = sqlcipher_malloc(pass_sz+1))) {
     sqlcipher_log(SQLCIPHER_LOG_ERROR, SQLCIPHER_LOG_CORE, "%s: failed to allocate key material storage", __func__);
     rc = SQLITE_NOMEM;
-    goto handle_error;
+    goto cleanup;
   }
   memset(pass, 0, pass_sz+1);
   memcpy(pass, ctx->read_ctx->pass, pass_sz);
@@ -2197,7 +2202,7 @@ static int sqlcipher_codec_ctx_migrate(codec_ctx *ctx) {
   for(i = 3; i > 0; i--) {
     if(!(pragma_compat = sqlite3_mprintf("PRAGMA cipher_compatibility = %d;", i))) {
       sqlcipher_log(SQLCIPHER_LOG_ERROR, SQLCIPHER_LOG_CORE, "%s: failed to format pragma_compat", __func__);
-      goto handle_error;
+      goto cleanup;
     }
 
     rc = sqlcipher_check_connection(db_filename, pass, pass_sz, pragma_compat, &user_version, &journal_mode);
@@ -2212,8 +2217,9 @@ static int sqlcipher_codec_ctx_migrate(codec_ctx *ctx) {
   /* if we exit the loop normally we failed to determine the version, this is an error */
   sqlcipher_log(SQLCIPHER_LOG_ERROR, SQLCIPHER_LOG_CORE, "sqlcipher_codec_ctx_migrate: unable to determine format version for upgrade: this may indicate custom settings were used ");
   rc = SQLITE_NOTADB;
-  goto handle_error;
+  goto cleanup;
 
+/* everything above exits through cleanup, nothing here has touched the database */
 migrate:
 
   if(!(temp = sqlite3_mprintf("%s-migrated", db_filename))) {

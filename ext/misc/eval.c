@@ -106,6 +106,9 @@ void EvalFunc(
   char *zErr = 0;
   int rc;
   struct EvalResult x;
+  int depth;                /* Recursion depth */
+  int *pDepth;              /* Prior depth */
+  static const char zDepth[] = "eval-extension-depth";
 
   memset(&x, 0, sizeof(x));
   x.zSep = " ";
@@ -117,7 +120,15 @@ void EvalFunc(
   }
   x.szSep = (int)strlen(x.zSep);
   db = sqlite3_context_db_handle(context);
+  pDepth = (int*)sqlite3_get_clientdata(db, zDepth);
+  depth = pDepth ? 1+*pDepth : 1;
+  if( depth>4 ){
+    sqlite3_result_error(context, "eval() nested too deep", -1);
+    return;
+  }
+  sqlite3_set_clientdata(db, zDepth, &depth, 0);
   rc = sqlite3_exec(db, zSql, EvalCallback, &x, &zErr);
+  sqlite3_set_clientdata(db, zDepth, pDepth, 0);
   if( rc!=SQLITE_OK ){
     sqlite3_result_error(context, zErr, -1);
     sqlite3_free(zErr);
